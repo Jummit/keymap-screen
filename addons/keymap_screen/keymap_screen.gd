@@ -172,7 +172,6 @@ func _update_buttons() -> void:
 		var data : Dictionary = item.get_metadata(0)
 		var rect := tree.get_item_area_rect(item, 1)
 		rect.position -= tree.get_scroll()
-		rect.position += Vector2.ONE * 8
 		rect.size.x -= 50
 		if data.get("action") and rect.position.y > 20:
 			var action : String = data.action
@@ -274,5 +273,5 @@ func _on_SearchEdit_text_changed(new_text : String) -> void:
 
 
 func _on_resized() -> void:
-	if tree.get_root():
+	if tree and tree.get_root():
 		_update_buttons()
