@@ -39,6 +39,7 @@ var _filter : String
 var _actions : Array
 var _action_names : Dictionary
 var _defaults : Dictionary
+var _cached_scroll : Vector2
 
 var NO_EVENT := InputEventKey.new()
 
@@ -63,6 +64,9 @@ func _input(event : InputEvent) -> void:
 		else:
 			# Wait for more input.
 			_editing_button.text += "..."
+	if tree.get_scroll() != _cached_scroll:
+		_update_buttons()
+		_cached_scroll = tree.get_scroll()
 
 
 func set_keymap(to : Dictionary) -> void:
@@ -78,6 +82,7 @@ func set_keymap(to : Dictionary) -> void:
 	_load_section(keymap, tree.create_item())
 	yield(get_tree(), "idle_frame")
 	_update_buttons()
+
 
 # Stores the current keymap in a json file.
 func save_keymap(path : String) -> void:
@@ -113,6 +118,8 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 		if value is Dictionary:
 			var section_root := tree.create_item(root)
 			section_root.set_text(0, key)
+			section_root.set_selectable(0, false)
+			section_root.set_selectable(1, false)
 			if not _load_section(value, section_root):
 				# Remove the section if no actions where added.
 				root.remove_child(section_root)
@@ -153,13 +160,15 @@ func _update_buttons() -> void:
 	var item := tree.get_root().get_children()
 	while item != null:
 		var data = item.get_metadata(0)
-		if data:
+		var rect := tree.get_item_area_rect(item, 1)
+		rect.position -= tree.get_scroll()
+		rect.position += Vector2.ONE * 8
+		rect.size.x -= 50
+		if data and rect.position.y > 20:
 			var button := Button.new()
 			var actions := InputMap.get_action_list(data)
 			if actions.size():
 				button.text = actions.front().as_text()
-			var rect := tree.get_item_area_rect(item, 1)
-			rect.size.x -= 50
 			tree.add_child(button)
 			button.rect_position = rect.position
 			button.rect_size = rect.size
