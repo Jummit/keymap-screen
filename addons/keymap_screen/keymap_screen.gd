@@ -8,17 +8,20 @@ Set `keymap` to a dictionary with action and sub-entries.
 Example:
 ```
 keymap = {
-		Section = {
-			"Action Name": "action_name",
-			SubSection = {
-				"Another Action": "another_action",
-			}
+	Section = {
+		"Action Name": "action_name",
+		SubSection = {
+			"Another Action": "another_action",
 		}
 	}
+}
 ```
 
 The edited keymap can be saved and loaded using `save_keymap` and `load_keymap`.
 """
+
+# Emitted when the user changes a shortcut or a keymap is loaded.
+signal keymap_changed
 
 var keymap : Dictionary setget set_keymap
 
@@ -108,6 +111,7 @@ func load_keymap(path : String) -> void:
 			_set_event(action, str2var(data[action]))
 	file.close()
 	set_keymap(keymap)
+	emit_signal("keymap_changed")
 
 
 # Constructs the tree of a keymap section.
@@ -186,6 +190,7 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 		# Clear the shortcut.
 		InputMap.action_erase_events(action)
 		set_keymap(keymap)
+		emit_signal("keymap_changed")
 		return
 	# Check for duplicates.
 	var duplicate_of : String
@@ -211,6 +216,7 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 func _set_event(action : String, event : InputEventKey) -> void:
 	InputMap.action_erase_events(action)
 	InputMap.action_add_event(action, event)
+	emit_signal("keymap_changed")
 
 
 func _get_action_event(action : String) -> InputEventKey:
