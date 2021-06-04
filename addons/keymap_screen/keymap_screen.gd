@@ -43,6 +43,7 @@ var _actions : Array
 var _action_names : Dictionary
 var _defaults : Dictionary
 var _cached_scroll : Vector2
+var _collapsed : Array
 
 var NO_EVENT := InputEventKey.new()
 
@@ -76,6 +77,8 @@ func set_keymap(to : Dictionary) -> void:
 	keymap = to
 	_actions.clear()
 	_action_names.clear()
+	# Prevent collapsed signals.
+	tree.set_block_signals(true)
 	tree.clear()
 	tree.set_column_titles_visible(true)
 	tree.set_column_title(0, "Action")
@@ -84,6 +87,7 @@ func set_keymap(to : Dictionary) -> void:
 	tree.set_column_expand(2, false)
 	_load_section(keymap, tree.create_item())
 	yield(get_tree(), "idle_frame")
+	tree.set_block_signals(false)
 	_update_buttons()
 
 
@@ -123,7 +127,9 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 			var section_root := tree.create_item(root)
 			section_root.set_text(0, key)
 			section_root.set_selectable(0, false)
+			section_root.set_metadata(0, {section = key})
 			section_root.set_selectable(1, false)
+			section_root.collapsed = key in _collapsed
 			if not _load_section(value, section_root):
 				# Remove the section if no actions where added.
 				root.remove_child(section_root)
@@ -137,7 +143,7 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 			did_add_action = true
 			var key_item := tree.create_item(root)
 			key_item.set_text(0, key)
-			key_item.set_metadata(0, value)
+			key_item.set_metadata(0, {action = value})
 			var action := _get_action_event(value)
 			if action != NO_EVENT:
 				key_item.add_button(ButtonColumn.CLEAR,
@@ -163,23 +169,24 @@ func _update_buttons() -> void:
 			child.queue_free()
 	var item := tree.get_root().get_children()
 	while item != null:
-		var data = item.get_metadata(0)
+		var data : Dictionary = item.get_metadata(0)
 		var rect := tree.get_item_area_rect(item, 1)
 		rect.position -= tree.get_scroll()
 		rect.position += Vector2.ONE * 8
 		rect.size.x -= 50
-		if data and rect.position.y > 20:
+		if data.get("action") and rect.position.y > 20:
+			var action : String = data.action
 			var button := Button.new()
-			var actions := InputMap.get_action_list(data)
+			var actions := InputMap.get_action_list(action)
 			if actions.size():
 				button.text = actions.front().as_text()
 			tree.add_child(button)
 			button.rect_position = rect.position
 			button.rect_size = rect.size
 			button.hint_tooltip = 'Configure the shortcut of "%s"' %\
-					_action_names[data]
+					_action_names[action]
 			button.connect("pressed", self, "_on_KeyButton_pressed", [button,
-					data])
+					action])
 		item = item.get_next_visible()
 
 
@@ -230,8 +237,14 @@ func _on_KeyButton_pressed(button : Button, action : String) -> void:
 	_editing_button.text = "Input..."
 
 
-func _on_Tree_item_collapsed(item: TreeItem) -> void:
-	_update_buttons()
+func _on_Tree_item_collapsed(item : TreeItem) -> void:
+	var section : String = item.get_metadata(0).section
+	if section in _collapsed:
+		_collapsed.erase(section)
+	else:
+		_collapsed.append(section)
+	yield(get_tree(), "idle_frame")
+	set_keymap(keymap)
 
 
 func _on_ReassignConfirmationDialog_confirmed() -> void:
@@ -246,11 +259,12 @@ func _on_ReassignConfirmationDialog_hide() -> void:
 
 
 func _on_Tree_button_pressed(item : TreeItem, column : int, _id : int) -> void:
+	var action : String = item.get_metadata(0).action
 	match column:
 		ButtonColumn.RESET:
-			_try_set_event(item.get_metadata(0), _defaults[item.get_metadata(0)])
+			_try_set_event(action, _defaults[action])
 		ButtonColumn.CLEAR:
-			_try_set_event(item.get_metadata(0), NO_EVENT)
+			_try_set_event(action, NO_EVENT)
 	set_keymap(keymap)
 
 
