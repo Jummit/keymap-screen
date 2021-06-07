@@ -44,6 +44,7 @@ var _action_names : Dictionary
 var _defaults : Dictionary
 var _cached_scroll : Vector2
 var _collapsed : Array
+var _listeners : Dictionary
 
 var NO_EVENT := InputEventKey.new()
 
@@ -71,6 +72,30 @@ func _input(event : InputEvent) -> void:
 	if tree.get_scroll() != _cached_scroll:
 		_update_buttons()
 		_cached_scroll = tree.get_scroll()
+
+
+# Register a menu whose shortcut will be updated when the keymap changes.
+# The list of actions represents the items of the menu.
+func register_menu(menu : PopupMenu, actions : PoolStringArray) -> void:
+	_listeners[menu] = actions
+
+
+# Register a button whose shortcut will be updated when the keymap changes.
+func register_button(button : Button, action : String) -> void:
+	_listeners[button] = action
+
+
+# Register a list of multiple listeners, either MenuButtons, Buttons or
+# PopupMenus. Example:
+# register_listeners({button: "test", menu: ["action", "stuff"]})
+func register_listeners(listeners : Dictionary) -> void:
+	for listener in listeners:
+		if listener is MenuButton:
+			register_menu(listener.get_popup(), listeners[listener])
+		elif listener is Button:
+			register_button(listener, listeners[listener])
+		elif listener is PopupMenu:
+			register_menu(listener, listeners[listener])
 
 
 func set_keymap(to : Dictionary) -> void:
@@ -106,7 +131,8 @@ func save_keymap(path : String) -> void:
 # Loads a keymap from a json file.
 func load_keymap(path : String) -> void:
 	var file := File.new()
-	file.open(path, File.READ)
+	if file.open(path, File.READ) != OK:
+		return
 	var data : Dictionary = parse_json(file.get_as_text())
 	for action in data:
 		if not data[action]:
@@ -115,7 +141,7 @@ func load_keymap(path : String) -> void:
 			_set_event(action, str2var(data[action]))
 	file.close()
 	set_keymap(keymap)
-	emit_signal("keymap_changed")
+	_on_keymap_changed()
 
 
 # Constructs the tree of a keymap section.
@@ -196,7 +222,7 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 		# Clear the shortcut.
 		InputMap.action_erase_events(action)
 		set_keymap(keymap)
-		emit_signal("keymap_changed")
+		_on_keymap_changed()
 		return
 	# Check for duplicates.
 	var duplicate_of : String
@@ -217,12 +243,12 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 	else:
 		_set_event(action, event)
 		set_keymap(keymap)
+		_on_keymap_changed()
 
 
 func _set_event(action : String, event : InputEventKey) -> void:
 	InputMap.action_erase_events(action)
 	InputMap.action_add_event(action, event)
-	emit_signal("keymap_changed")
 
 
 func _get_action_event(action : String) -> InputEventKey:
@@ -234,6 +260,26 @@ func _on_KeyButton_pressed(button : Button, action : String) -> void:
 	_editing_action = action
 	_editing_button = button
 	_editing_button.text = "Input..."
+
+
+func _on_keymap_changed() -> void:
+	for listener in _listeners:
+		if listener is Button:
+			var action := _get_action_event(_listeners[listener])
+			var shortcut : ShortCut
+			if action != NO_EVENT:
+				shortcut = ShortCut.new()
+				shortcut.shortcut = action
+			listener.shortcut = shortcut
+		elif listener is PopupMenu:
+			for id in _listeners[listener].size():
+				var action := _get_action_event(_listeners[listener][id])
+				var shortcut : ShortCut
+				if action != NO_EVENT:
+					shortcut = ShortCut.new()
+					shortcut.shortcut = action
+				listener.set_item_shortcut(id, shortcut)
+	emit_signal("keymap_changed")
 
 
 func _on_Tree_item_collapsed(item : TreeItem) -> void:
