@@ -2,14 +2,14 @@ extends Control
 
 const KeymapScreen = preload("res://addons/keymap_screen/keymap_screen.gd")
 
-onready var keymap_screen : KeymapScreen = $KeymapScreen
+@onready var keymap_screen : KeymapScreen = $KeymapScreen
 
 func _ready() -> void:
 	keymap_screen.keymap = {
 		Actions = {
 			"Do Action": "do_action",
 			"Revert Action": "revert_action",
-			Advanced = {
+			"Advanced": {
 				"Advanced Action": "advanced_action",
 				"Revert Multiple Actions": "revert_multiple",
 			}

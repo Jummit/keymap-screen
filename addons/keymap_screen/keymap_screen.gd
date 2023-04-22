@@ -1,29 +1,29 @@
 extends Panel
 
-"""
-A dialog to configure shortcuts
+## A dialog to configure shortcuts
+##
+## Set [member keymap] to a dictionary with action and sub-entries.
+## [br][br]
+## [b]Example:[/b]
+## [br]
+## [codeblock]
+##     keymap = {
+##         Application = {
+##             "Window": "toggle_fullscreen",
+##             "File": {
+##                 "Another Action": "save",
+##             }
+##         }
+##     }
+## [/codeblock]
+## [br]
+## The edited keymap can be saved and loaded using [method save_keymap] and [method load_keymap].
 
-Set `keymap` to a dictionary with action and sub-entries.
-
-Example:
-```
-keymap = {
-	Section = {
-		"Action Name": "action_name",
-		SubSection = {
-			"Another Action": "another_action",
-		}
-	}
-}
-```
-
-The edited keymap can be saved and loaded using `save_keymap` and `load_keymap`.
-"""
-
-# Emitted when the user changes a shortcut or a keymap is loaded.
+## Emitted when the user changes a shortcut or a keymap is loaded.
 signal keymap_changed
 
-var keymap : Dictionary setget set_keymap
+var keymap : Dictionary:
+	set = set_keymap
 
 const POPUP_TEXT := '"%s" conflicts with the shortcut of "%s".\nDo you want to clear the shortcut of this action?'
 
@@ -46,24 +46,23 @@ var _cached_scroll : Vector2
 var _collapsed : Array
 var _listeners : Dictionary
 
-var NO_EVENT := InputEventKey.new()
-
-onready var tree : Tree = $VBoxContainer/Tree
-onready var search_edit : LineEdit = $VBoxContainer/SearchEdit
+@onready var tree : Tree = $VBoxContainer/Tree
+@onready var search_edit : LineEdit = $VBoxContainer/SearchEdit
+@onready var reassign_confirmation_dialog: ConfirmationDialog = $ReassignConfirmationDialog
 
 func _ready() -> void:
 	search_edit.right_icon = preload("search_icon.svg")
 
 
 func _input(event : InputEvent) -> void:
-	if _editing_action and is_instance_valid(_editing_button) and event is InputEventKey:
-		if event.scancode == KEY_ESCAPE:
+	if not _editing_action.is_empty() and is_instance_valid(_editing_button) and event is InputEventKey:
+		if event.keycode == KEY_ESCAPE:
 			# Cancel shortcut input.
 			_editing_action = ""
 			set_keymap(keymap)
 			return
 		_editing_button.text = event.as_text()
-		if not event.scancode in [KEY_SHIFT, KEY_CONTROL, KEY_ALT]:
+		if not event.keycode in [KEY_SHIFT, KEY_CTRL, KEY_ALT]:
 			# Action contains an actual key, storing the action.
 			_try_set_event(_editing_action, event)
 		else:
@@ -74,13 +73,13 @@ func _input(event : InputEvent) -> void:
 		_cached_scroll = tree.get_scroll()
 
 
-# Register a menu whose shortcut will be updated when the keymap changes.
-# The list of actions represents the items of the menu.
-func register_menu(menu : PopupMenu, actions : PoolStringArray) -> void:
+## Register a menu whose shortcut will be updated when the keymap changes.
+## The list of actions represents the items of the menu.
+func register_menu(menu : PopupMenu, actions : PackedStringArray) -> void:
 	_listeners[menu] = actions
 
 
-# Register a button whose shortcut will be updated when the keymap changes.
+## Register a button whose shortcut will be updated when the keymap changes.
 func register_button(button : Button, action : String) -> void:
 	_listeners[button] = action
 
@@ -108,43 +107,44 @@ func set_keymap(to : Dictionary) -> void:
 	tree.set_column_titles_visible(true)
 	tree.set_column_title(0, "Action")
 	tree.set_column_title(1, "Shortcut")
-	tree.set_column_min_width(2, 18)
+	tree.set_column_custom_minimum_width(2, 18)
 	tree.set_column_expand(2, false)
 	_load_section(keymap, tree.create_item())
-	yield(get_tree(), "idle_frame")
+	await get_tree().process_frame
 	tree.set_block_signals(false)
 	_update_buttons()
 
 
-# Stores the current keymap in a json file.
+## Stores the current keymap in a JSON file.
 func save_keymap(path : String) -> void:
-	var file := File.new()
-	file.open(path, File.WRITE)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file.get_error() != OK:
+		return
 	var data := {}
 	for action in _actions:
 		var event := _get_action_event(action)
-		data[action] = "" if event == NO_EVENT else var2str(event)
-	file.store_string(to_json(data))
+		data[action] = "" if not event else var_to_str(event)
+	file.store_string(JSON.stringify(data))
 	file.close()
 
 
-# Loads a keymap from a json file.
+## Loads a keymap from a JSON file.
 func load_keymap(path : String) -> void:
-	var file := File.new()
-	if file.open(path, File.READ) != OK:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file.get_error() != OK:
 		return
-	var data : Dictionary = parse_json(file.get_as_text())
+	var data : Dictionary = JSON.parse_string(file.get_as_text())
 	for action in data:
-		if not data[action]:
+		if data[action] == null:
 			InputMap.action_erase_events(action)
 		else:
-			_set_event(action, str2var(data[action]))
+			_set_event(action, str_to_var(data[action]))
 	file.close()
 	set_keymap(keymap)
 	_on_keymap_changed()
 
 
-# Constructs the tree of a keymap section.
+## Constructs the tree of a keymap section.
 func _load_section(section : Dictionary, root : TreeItem) -> bool:
 	var did_add_action := false
 	for key in section:
@@ -171,14 +171,17 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 			key_item.set_text(0, key)
 			key_item.set_metadata(0, {action = value})
 			var action := _get_action_event(value)
-			if action != NO_EVENT:
+			if action:
 				key_item.add_button(ButtonColumn.CLEAR,
 						preload("clear_icon.svg"), -1, false,
 						"Clear the shortcut")
 			if value in _defaults:
 				# Show reset button if the shortcut was changed.
-				if action.get_scancode_with_modifiers() !=\
-						_defaults[value].get_scancode_with_modifiers():
+				var default : InputEventKey = _defaults[value]
+				var changed := (not default) != (not action)
+				if default and action and action.get_keycode_with_modifiers() != default.get_keycode_with_modifiers():
+					changed = true
+				if changed:
 					key_item.add_button(ButtonColumn.RESET,
 							preload("reset_icon.svg"), -1, false,
 							"Reset to default shortcut")
@@ -188,37 +191,37 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 	return did_add_action
 
 
-# Add buttons to visible action tree items.
+## Add buttons to visible action tree items.
 func _update_buttons() -> void:
 	for child in tree.get_children():
 		if child is Button:
 			child.queue_free()
-	var item := tree.get_root().get_children()
+	var item := tree.get_root().get_first_child()
 	while item != null:
 		var data : Dictionary = item.get_metadata(0)
 		var rect := tree.get_item_area_rect(item, 1)
 		rect.position -= tree.get_scroll()
 		rect.size.x -= 50
+		rect.position.y += 5
 		if data.get("action") and rect.position.y > 20:
 			var action : String = data.action
 			var button := Button.new()
-			var actions := InputMap.get_action_list(action)
-			if actions.size():
-				button.text = actions.front().as_text()
+			var events := InputMap.action_get_events(action)
+			if events.size():
+				button.text = events.front().as_text()
 			tree.add_child(button)
-			button.rect_position = rect.position
-			button.rect_size = rect.size
-			button.hint_tooltip = 'Configure the shortcut of "%s"' %\
+			button.position = rect.position
+			button.size = rect.size
+			button.tooltip_text = 'Configure the shortcut of "%s"' %\
 					_action_names[action]
-			button.connect("pressed", self, "_on_KeyButton_pressed", [button,
-					action])
+			button.pressed.connect(_on_KeyButton_pressed.bind(button, action))
 		item = item.get_next_visible()
 
 
-# Tries to set the shortcut of an action, showing a dialog if any duplicates
-# where found.
+## Tries to set the shortcut of an action, showing a dialog if any duplicates
+## where found.
 func _try_set_event(action : String, event : InputEventKey) -> void:
-	if event == NO_EVENT:
+	if not event:
 		# Clear the shortcut.
 		InputMap.action_erase_events(action)
 		set_keymap(keymap)
@@ -229,14 +232,14 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 	for dup_action in _actions:
 		if dup_action == action:
 			continue
-		if event.get_scancode_with_modifiers() ==\
-				_get_action_event(dup_action).get_scancode_with_modifiers():
+		var other := _get_action_event(dup_action)
+		if other and event.get_keycode_with_modifiers() == other.get_keycode_with_modifiers():
 			duplicate_of = dup_action
 			break
 	if duplicate_of:
-		$ReassignConfirmationDialog.dialog_text = POPUP_TEXT % [
+		reassign_confirmation_dialog.dialog_text = tr(POPUP_TEXT) % [
 				event.as_text(), _action_names[duplicate_of]]
-		$ReassignConfirmationDialog.popup()
+		reassign_confirmation_dialog.popup()
 		_action_to_replace = duplicate_of
 		_editing_action = action
 		_selected_event = event
@@ -248,12 +251,15 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 
 func _set_event(action : String, event : InputEventKey) -> void:
 	InputMap.action_erase_events(action)
-	InputMap.action_add_event(action, event)
+	if event:
+		InputMap.action_add_event(action, event)
 
 
 func _get_action_event(action : String) -> InputEventKey:
-	return NO_EVENT if not InputMap.get_action_list(action).size()\
-					else InputMap.get_action_list(action).front()
+	var events := InputMap.action_get_events(action)
+	if events.is_empty():
+		return null
+	return events.front()
 
 
 func _on_KeyButton_pressed(button : Button, action : String) -> void:
@@ -266,17 +272,17 @@ func _on_keymap_changed() -> void:
 	for listener in _listeners:
 		if listener is Button:
 			var action := _get_action_event(_listeners[listener])
-			var shortcut : ShortCut
-			if action != NO_EVENT:
-				shortcut = ShortCut.new()
+			var shortcut : Shortcut
+			if action:
+				shortcut = Shortcut.new()
 				shortcut.shortcut = action
 			listener.shortcut = shortcut
 		elif listener is PopupMenu:
 			for id in _listeners[listener].size():
 				var action := _get_action_event(_listeners[listener][id])
-				var shortcut : ShortCut
-				if action != NO_EVENT:
-					shortcut = ShortCut.new()
+				var shortcut : Shortcut
+				if action:
+					shortcut = Shortcut.new()
 					shortcut.shortcut = action
 				listener.set_item_shortcut(id, shortcut)
 	emit_signal("keymap_changed")
@@ -288,7 +294,7 @@ func _on_Tree_item_collapsed(item : TreeItem) -> void:
 		_collapsed.erase(section)
 	else:
 		_collapsed.append(section)
-	yield(get_tree(), "idle_frame")
+	await get_tree().process_frame
 	set_keymap(keymap)
 
 
@@ -299,17 +305,13 @@ func _on_ReassignConfirmationDialog_confirmed() -> void:
 	_editing_action = ""
 
 
-func _on_ReassignConfirmationDialog_hide() -> void:
-	set_keymap(keymap)
-
-
-func _on_Tree_button_pressed(item : TreeItem, column : int, _id : int) -> void:
+func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var action : String = item.get_metadata(0).action
 	match column:
 		ButtonColumn.RESET:
 			_try_set_event(action, _defaults[action])
 		ButtonColumn.CLEAR:
-			_try_set_event(action, NO_EVENT)
+			_try_set_event(action, null)
 	set_keymap(keymap)
 
 
@@ -321,3 +323,8 @@ func _on_SearchEdit_text_changed(new_text : String) -> void:
 func _on_resized() -> void:
 	if tree and tree.get_root():
 		_update_buttons()
+
+
+func _on_reassign_confirmation_dialog_visibility_changed() -> void:
+	if not reassign_confirmation_dialog.visible:
+		set_keymap(keymap)

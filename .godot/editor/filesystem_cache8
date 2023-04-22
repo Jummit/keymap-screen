@@ -1,0 +1,14 @@
+2a60927148abd1d33b818b535e306557
+::res://::1682146264
+icon.png::CompressedTexture2D::2340475107469980543::1682143076::1682143087::1::::<><>::
+main.gd::GDScript::-1::1682143542::0::1::::<>Control<>::
+main.tscn::PackedScene::4430289959547402478::1682146249::0::1::::<><>::uid://4w2n3dlf02b7<>res://main.gd
+README.md::TextFile::-1::1682146131::0::1::::<><>::
+screenshot.png::CompressedTexture2D::488266052235186749::1682146259::1682146264::1::::<><>::
+::res://addons/::1682143076
+::res://addons/keymap_screen/::1682146249
+clear_icon.svg::CompressedTexture2D::4447197253065238382::1682143076::1682143087::1::::<><>::
+keymap_screen.gd::GDScript::-1::1682146230::0::1::::<>Panel<>::
+keymap_screen.tscn::PackedScene::2082556826013414886::1682146249::0::1::::<><>::res://addons/keymap_screen/keymap_screen.gd
+reset_icon.svg::CompressedTexture2D::3599375715675348886::1682143076::1682143087::1::::<><>::
+search_icon.svg::CompressedTexture2D::8960977374307757971::1682143076::1682143087::1::::<><>::

@@ -1,14 +1,14 @@
-# Keymap Screen Addon
+# Keymap Screen Addon ![Godot v4.1](https://img.shields.io/badge/Godot-v4.1-%23478cbf ![GitHub](https://img.shields.io/github/license/Jummit/keymap-screen)
 
 ![screenshot](screenshot.png)
 
-A dialog to configure shortcuts. Mostly for usage inside of applications, but can be used inside games as well.
+A dialog to configure shortcuts. It's primarily made for usage inside of applications, but can be used inside games as well.
 
 Supports searching, sub-sections, conflict resolution and clearing and resetting shortcuts.
 
 ## Usage
 
-Set `keymap` to a dictionary with action and sub-entries.
+Set `keymap` to a dictionary with actions and sub-entries.
 
 Example:
 
@@ -16,7 +16,7 @@ Example:
 keymap = {
 	Section = {
 		"Action Name": "action_name",
-		SubSection = {
+		"SubSection": {
 			"Another Action": "another_action",
 		}
 	}
