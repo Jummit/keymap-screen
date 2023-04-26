@@ -1,4 +1,4 @@
-# Keymap Screen Addon ![Godot v4.1](https://img.shields.io/badge/Godot-v4.1-%23478cbf?logo=godotengine) ![GitHub](https://img.shields.io/github/license/Jummit/keymap-screen)
+# Keymap Screen Addon ![Godot v4.0.2](https://img.shields.io/badge/Godot-v4.0.2-%23478cbf?logo=godotengine) ![GitHub](https://img.shields.io/github/license/Jummit/keymap-screen)
 
 A dialog to configure shortcuts. It's primarily made for usage inside of applications, but can be used inside games as well.
 
@@ -10,9 +10,11 @@ Supports searching, sub-sections, conflict resolution and clearing and resetting
 
 ## Usage
 
+Download a [realase](https://github.com/Jummit/keymap-screen/releases) and put it into your addons folder.
+
 Set `keymap` to a dictionary with actions and sub-entries.
 
-Example:
+**Example:**
 
 ```gdscript
 keymap = {

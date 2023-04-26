@@ -23,11 +23,11 @@ extends Panel
 signal keymap_changed
 
 var keymap : Dictionary:
-	set = set_keymap
+	set = _set_keymap
 
-const POPUP_TEXT := '"%s" conflicts with the shortcut of "%s".\nDo you want to clear the shortcut of this action?'
+const _POPUP_TEXT := '"%s" conflicts with the shortcut of "%s".\nDo you want to clear the shortcut of this action?'
 
-enum ButtonColumn {
+enum _ButtonColumn {
 	CLEAR = 1,
 	RESET = 2,
 }
@@ -46,12 +46,12 @@ var _cached_scroll : Vector2
 var _collapsed : Array
 var _listeners : Dictionary
 
-@onready var tree : Tree = $VBoxContainer/Tree
-@onready var search_edit : LineEdit = $VBoxContainer/SearchEdit
-@onready var reassign_confirmation_dialog: ConfirmationDialog = $ReassignConfirmationDialog
+@onready var _tree : Tree = $VBoxContainer/Tree
+@onready var _search_edit : LineEdit = $VBoxContainer/SearchEdit
+@onready var _reassign_confirmation_dialog: ConfirmationDialog = $ReassignConfirmationDialog
 
 func _ready() -> void:
-	search_edit.right_icon = preload("search_icon.svg")
+	_search_edit.right_icon = preload("search_icon.svg")
 
 
 func _input(event : InputEvent) -> void:
@@ -59,7 +59,7 @@ func _input(event : InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			# Cancel shortcut input.
 			_editing_action = ""
-			set_keymap(keymap)
+			_set_keymap(keymap)
 			return
 		_editing_button.text = event.as_text()
 		if not event.keycode in [KEY_SHIFT, KEY_CTRL, KEY_ALT]:
@@ -68,9 +68,9 @@ func _input(event : InputEvent) -> void:
 		else:
 			# Wait for more input.
 			_editing_button.text += "..."
-	if tree.get_scroll() != _cached_scroll:
+	if _tree.get_scroll() != _cached_scroll:
 		_update_buttons()
-		_cached_scroll = tree.get_scroll()
+		_cached_scroll = _tree.get_scroll()
 
 
 ## Register a menu whose shortcut will be updated when the keymap changes.
@@ -84,9 +84,12 @@ func register_button(button : Button, action : String) -> void:
 	_listeners[button] = action
 
 
-# Register a list of multiple listeners, either MenuButtons, Buttons or
-# PopupMenus. Example:
-# register_listeners({button: "test", menu: ["action", "stuff"]})
+## Register a list of multiple listeners, either MenuButtons, Buttons or
+## PopupMenus.
+## [br]
+## [b]Example:[/b][br]
+## [code]register_listeners({button: "test", menu: ["action", "stuff"]})[/code]
+# TODO: Add better example, this feels important.
 func register_listeners(listeners : Dictionary) -> void:
 	for listener in listeners:
 		if listener is MenuButton:
@@ -95,24 +98,6 @@ func register_listeners(listeners : Dictionary) -> void:
 			register_button(listener, listeners[listener])
 		elif listener is PopupMenu:
 			register_menu(listener, listeners[listener])
-
-
-func set_keymap(to : Dictionary) -> void:
-	keymap = to
-	_actions.clear()
-	_action_names.clear()
-	# Prevent collapsed signals.
-	tree.set_block_signals(true)
-	tree.clear()
-	tree.set_column_titles_visible(true)
-	tree.set_column_title(0, "Action")
-	tree.set_column_title(1, "Shortcut")
-	tree.set_column_custom_minimum_width(2, 18)
-	tree.set_column_expand(2, false)
-	_load_section(keymap, tree.create_item())
-	await get_tree().process_frame
-	tree.set_block_signals(false)
-	_update_buttons()
 
 
 ## Stores the current keymap in a JSON file.
@@ -140,17 +125,37 @@ func load_keymap(path : String) -> void:
 		else:
 			_set_event(action, str_to_var(data[action]))
 	file.close()
-	set_keymap(keymap)
+	_set_keymap(keymap)
 	_on_keymap_changed()
 
 
+func _set_keymap(to : Dictionary) -> void:
+	keymap = to
+	_actions.clear()
+	_action_names.clear()
+	# Prevent collapsed signals.
+	_tree.set_block_signals(true)
+	_tree.clear()
+	_tree.set_column_titles_visible(true)
+	_tree.set_column_title(0, "Action")
+	_tree.set_column_title(1, "Shortcut")
+	_tree.set_column_custom_minimum_width(2, 18)
+	_tree.set_column_expand(2, false)
+	_load_section(keymap, _tree.create_item())
+	await get_tree().process_frame
+	_tree.set_block_signals(false)
+	_update_buttons()
+
+
 ## Constructs the tree of a keymap section.
+## Returns wether the section contained any items.
 func _load_section(section : Dictionary, root : TreeItem) -> bool:
+	# TODO: Split this into multiple functions.
 	var did_add_action := false
 	for key in section:
 		var value = section[key]
 		if value is Dictionary:
-			var section_root := tree.create_item(root)
+			var section_root := _tree.create_item(root)
 			section_root.set_text(0, key)
 			section_root.set_selectable(0, false)
 			section_root.set_metadata(0, {section = key})
@@ -167,12 +172,12 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 			if _filter and not ((_filter in key.to_lower()) or (_filter in value.replace("_", " ").to_lower())):
 				continue
 			did_add_action = true
-			var key_item := tree.create_item(root)
+			var key_item := _tree.create_item(root)
 			key_item.set_text(0, key)
 			key_item.set_metadata(0, {action = value})
 			var action := _get_action_event(value)
 			if action:
-				key_item.add_button(ButtonColumn.CLEAR,
+				key_item.add_button(_ButtonColumn.CLEAR,
 						preload("clear_icon.svg"), -1, false,
 						"Clear the shortcut")
 			if value in _defaults:
@@ -182,7 +187,7 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 				if default and action and action.get_keycode_with_modifiers() != default.get_keycode_with_modifiers():
 					changed = true
 				if changed:
-					key_item.add_button(ButtonColumn.RESET,
+					key_item.add_button(_ButtonColumn.RESET,
 							preload("reset_icon.svg"), -1, false,
 							"Reset to default shortcut")
 			else:
@@ -193,14 +198,14 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 
 ## Add buttons to visible action tree items.
 func _update_buttons() -> void:
-	for child in tree.get_children():
+	for child in _tree.get_children():
 		if child is Button:
 			child.queue_free()
-	var item := tree.get_root().get_first_child()
+	var item := _tree.get_root().get_first_child()
 	while item != null:
 		var data : Dictionary = item.get_metadata(0)
-		var rect := tree.get_item_area_rect(item, 1)
-		rect.position -= tree.get_scroll()
+		var rect := _tree.get_item_area_rect(item, 1)
+		rect.position -= _tree.get_scroll()
 		rect.size.x -= 50
 		rect.position.y += 5
 		if data.get("action") and rect.position.y > 20:
@@ -209,7 +214,7 @@ func _update_buttons() -> void:
 			var events := InputMap.action_get_events(action)
 			if events.size():
 				button.text = events.front().as_text()
-			tree.add_child(button)
+			_tree.add_child(button)
 			button.position = rect.position
 			button.size = rect.size
 			button.tooltip_text = 'Configure the shortcut of "%s"' %\
@@ -224,7 +229,7 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 	if not event:
 		# Clear the shortcut.
 		InputMap.action_erase_events(action)
-		set_keymap(keymap)
+		_set_keymap(keymap)
 		_on_keymap_changed()
 		return
 	# Check for duplicates.
@@ -237,18 +242,19 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 			duplicate_of = dup_action
 			break
 	if duplicate_of:
-		reassign_confirmation_dialog.dialog_text = tr(POPUP_TEXT) % [
+		_reassign_confirmation_dialog.dialog_text = tr(_POPUP_TEXT) % [
 				event.as_text(), _action_names[duplicate_of]]
-		reassign_confirmation_dialog.popup()
+		_reassign_confirmation_dialog.popup_centered()
 		_action_to_replace = duplicate_of
 		_editing_action = action
 		_selected_event = event
 	else:
 		_set_event(action, event)
-		set_keymap(keymap)
+		_set_keymap(keymap)
 		_on_keymap_changed()
 
 
+# TODO: Document these helper functions.
 func _set_event(action : String, event : InputEventKey) -> void:
 	InputMap.action_erase_events(action)
 	if event:
@@ -285,7 +291,7 @@ func _on_keymap_changed() -> void:
 					shortcut = Shortcut.new()
 					shortcut.shortcut = action
 				listener.set_item_shortcut(id, shortcut)
-	emit_signal("keymap_changed")
+	keymap_changed.emit()
 
 
 func _on_Tree_item_collapsed(item : TreeItem) -> void:
@@ -295,36 +301,36 @@ func _on_Tree_item_collapsed(item : TreeItem) -> void:
 	else:
 		_collapsed.append(section)
 	await get_tree().process_frame
-	set_keymap(keymap)
+	_set_keymap(keymap)
 
 
 func _on_ReassignConfirmationDialog_confirmed() -> void:
 	InputMap.action_erase_events(_action_to_replace)
 	_set_event(_editing_action, _selected_event)
-	set_keymap(keymap)
+	_set_keymap(keymap)
 	_editing_action = ""
 
 
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var action : String = item.get_metadata(0).action
 	match column:
-		ButtonColumn.RESET:
+		_ButtonColumn.RESET:
 			_try_set_event(action, _defaults[action])
-		ButtonColumn.CLEAR:
+		_ButtonColumn.CLEAR:
 			_try_set_event(action, null)
-	set_keymap(keymap)
+	_set_keymap(keymap)
 
 
 func _on_SearchEdit_text_changed(new_text : String) -> void:
 	_filter = new_text.to_lower()
-	set_keymap(keymap)
+	_set_keymap(keymap)
 
 
 func _on_resized() -> void:
-	if tree and tree.get_root():
+	if _tree and _tree.get_root():
 		_update_buttons()
 
 
 func _on_reassign_confirmation_dialog_visibility_changed() -> void:
-	if not reassign_confirmation_dialog.visible:
-		set_keymap(keymap)
+	if not _reassign_confirmation_dialog.visible:
+		_set_keymap(keymap)
