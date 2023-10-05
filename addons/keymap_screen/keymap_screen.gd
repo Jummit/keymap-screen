@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Jummit
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 @icon("keymap_screen_icon.svg")
 extends Panel
 class_name KeymapScreen
