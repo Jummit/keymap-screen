@@ -1,8 +1,8 @@
 extends Control
 
-const KeymapScreen = preload("res://addons/keymap_screen/keymap_screen.gd")
+## Demo of the Keymap Screen addon.
 
-@onready var keymap_screen : KeymapScreen = $KeymapScreen
+@onready var keymap_screen: KeymapScreen = $KeymapScreen
 
 func _ready() -> void:
 	keymap_screen.keymap = {

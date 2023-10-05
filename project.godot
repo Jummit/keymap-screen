@@ -12,13 +12,14 @@ config_version=5
 
 config/name="Keymap Screen Addon"
 config/description="Demo for the keymap screen addon."
+config/tags=PackedStringArray("addon")
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.0")
-config/icon="res://icon.png"
+config/features=PackedStringArray("4.1")
+config/icon="res://icon.svg"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/keymapscreen/plugin.cfg", "res://addons/keymap_screen/plugin.cfg")
+enabled=PackedStringArray("res://addons/keymap_screen/plugin.cfg")
 
 [input]
 

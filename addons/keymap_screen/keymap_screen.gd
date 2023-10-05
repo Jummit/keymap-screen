@@ -1,11 +1,12 @@
+@icon("keymap_screen_icon.svg")
 extends Panel
+class_name KeymapScreen
 
 ## A dialog to configure shortcuts
 ##
 ## Set [member keymap] to a dictionary with action and sub-entries.
 ## [br][br]
 ## [b]Example:[/b]
-## [br]
 ## [codeblock]
 ##     keymap = {
 ##         Application = {
@@ -16,7 +17,6 @@ extends Panel
 ##         }
 ##     }
 ## [/codeblock]
-## [br]
 ## The edited keymap can be saved and loaded using [method save_keymap] and [method load_keymap].
 
 ## Emitted when the user changes a shortcut or a keymap is loaded.
@@ -51,11 +51,12 @@ var _listeners : Dictionary
 @onready var _reassign_confirmation_dialog: ConfirmationDialog = $ReassignConfirmationDialog
 
 func _ready() -> void:
-	_search_edit.right_icon = preload("search_icon.svg")
+	_search_edit.right_icon = preload("icons/search_icon.svg")
 
 
 func _input(event : InputEvent) -> void:
-	if not _editing_action.is_empty() and is_instance_valid(_editing_button) and event is InputEventKey:
+	if not _editing_action.is_empty() and is_instance_valid(_editing_button)\
+			and event is InputEventKey:
 		if event.keycode == KEY_ESCAPE:
 			# Cancel shortcut input.
 			_editing_action = ""
@@ -169,7 +170,8 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 		else:
 			_actions.append(value)
 			_action_names[value] = key
-			if _filter and not ((_filter in key.to_lower()) or (_filter in value.replace("_", " ").to_lower())):
+			if _filter and not ((_filter in key.to_lower())\
+					or (_filter in value.replace("_", " ").to_lower())):
 				continue
 			did_add_action = true
 			var key_item := _tree.create_item(root)
@@ -178,17 +180,18 @@ func _load_section(section : Dictionary, root : TreeItem) -> bool:
 			var action := _get_action_event(value)
 			if action:
 				key_item.add_button(_ButtonColumn.CLEAR,
-						preload("clear_icon.svg"), -1, false,
+						preload("icons/clear_icon.svg"), -1, false,
 						"Clear the shortcut")
 			if value in _defaults:
 				# Show reset button if the shortcut was changed.
 				var default : InputEventKey = _defaults[value]
 				var changed := (not default) != (not action)
-				if default and action and action.get_keycode_with_modifiers() != default.get_keycode_with_modifiers():
+				if default and action and action.get_keycode_with_modifiers()\
+						!= default.get_keycode_with_modifiers():
 					changed = true
 				if changed:
 					key_item.add_button(_ButtonColumn.RESET,
-							preload("reset_icon.svg"), -1, false,
+							preload("icons/reset_icon.svg"), -1, false,
 							"Reset to default shortcut")
 			else:
 				# Store the default shortcut for this action.
@@ -238,7 +241,8 @@ func _try_set_event(action : String, event : InputEventKey) -> void:
 		if dup_action == action:
 			continue
 		var other := _get_action_event(dup_action)
-		if other and event.get_keycode_with_modifiers() == other.get_keycode_with_modifiers():
+		if other and event.get_keycode_with_modifiers()\
+				== other.get_keycode_with_modifiers():
 			duplicate_of = dup_action
 			break
 	if duplicate_of:
@@ -311,7 +315,8 @@ func _on_ReassignConfirmationDialog_confirmed() -> void:
 	_editing_action = ""
 
 
-func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
+func _on_tree_button_clicked(item: TreeItem, column: int, id: int,
+		mouse_button_index: int) -> void:
 	var action : String = item.get_metadata(0).action
 	match column:
 		_ButtonColumn.RESET:

@@ -28,3 +28,9 @@ keymap = {
 ```
 
 The edited keymap can be saved and loaded as json files using `save_keymap` and `load_keymap`.
+
+## License
+
+The code is licensed under GPL 3.0 or later. Assets and non-code files are licensed under CC0 1.0.
+
+This project is REUSE compliant.
